@@ -1,0 +1,53 @@
+├── data/
+│   ├── raw/
+│   ├── interim/
+│   ├── processed/
+│   └── external/
+│
+├── notebooks/
+│
+├── src/
+│   ├── __init__.py
+│   ├── config.py
+│   │
+│   ├── data_colletion/
+│   │   ├── __init__.py
+│   │   ├── data_download.py
+│   │
+│   ├── data_curation/
+│   │   ├── __init__.py
+│   │   └── data_curation.py
+│   │
+│   ├── data_preprocessing/
+│   │   ├── __init__.py
+│   │   ├── feature_engineering.py
+│   │   └── weather_enrichment.py
+│   │
+│   ├── train_test_models/
+│   │   ├── __init__.py
+│   │   ├── train.py
+│   │   ├── evaluate.py
+│   │   └── visualize.py
+│   │
+│   └── utils/
+│       ├── __init__.py
+│       ├── file_io.py
+│       ├── preprocessing.py
+│       ├── plotting.py
+│       └── model_io.py
+│
+├── models/
+│
+├── reports/
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_download.py
+│   ├── test_curation.py
+│   ├── test_feature_engineering.py
+│   └── test_train.py
+│
+├── main.py
+├── requirements.txt
+├── README.md
+└── .gitignore
