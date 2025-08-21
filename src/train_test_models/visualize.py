@@ -1,6 +1,11 @@
+from pathlib import Path
+from src.utils.plotting import  visualize_report
 
 
-
-def run():
-    """Run the data curation step."""
-    ...
+    
+def run ():
+    
+    visualize_report(report_type="evaluation")
+    visualize_report(report_type="training")
+    
+   

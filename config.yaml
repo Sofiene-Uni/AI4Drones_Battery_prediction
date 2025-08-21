@@ -5,16 +5,14 @@ paths:
   base_dir: "./"
   data_dir: "data"
   raw_dir: "data/raw"
-  interim_dir: "data/interim"
+  curated_dir: "data/curated"
   processed_dir: "data/processed"
-  prepared_dir: "data/ prepared"
-  weather_dir: "data/external"
+  prepared_dir: "data/prepared"
+
+
   models_dir: "models"
   reports_dir: "reports"
   logbook_path: "data/logbook.csv"
-  saved_models: "models"
-  
-  
 
 # ================================
 # Pipeline
@@ -22,47 +20,39 @@ paths:
 pipeline:
   run_data_collection: true
   run_data_preprocessing: true
-  run_data_curation: false
+  run_data_curation: true
   run_data_prepare: true
   run_train: true
-  run_evaluate: false
-  run_visualize: false
+  run_evaluate: true
+  run_visualize: true
 
 # ================================
 # Data collection
 # ================================
-
 download:
-    download_latest: false 
-    url: "https://example.com/ulg-drone-data.zip"
-
+  download_latest: false 
+  url: "https://example.com/ulg-drone-data.zip"
 
 # ================================
 # Data Curation
 # ================================
+datasets:
+  battery_status: ["timestamp", "current_a", "voltage_v"]
+  vehicle_gps_position: ["timestamp", "lat", "lon", "alt"]
+  #vehicle_local_position: ["timestamp", "x", "y", "z", "vx", "vy", "vz"]
+  vehicle_acceleration: ["timestamp", "xyz[0]", "xyz[1]", "xyz[2]"]
+  sensor_baro: ["timestamp", "pressure", "temperature"]
+  sensor_gps: ["timestamp", "time_utc_usec"]
 
-
-datasets : {
-
-    "battery_status": ["timestamp", "current_a", "voltage_v"],
-    "vehicle_gps_position": ["timestamp", "lat", "lon", "alt"],
-    "vehicle_local_position": ["timestamp", "x", "y", "z", "vx", "vy", "vz"],
-    "vehicle_acceleration": ["timestamp", "xyz[0]", "xyz[1]", "xyz[2]"],
-    "sensor_baro": ["timestamp", "pressure", "temperature"],
-    "sensor_gps": ['timestamp', 'time_utc_usec']
-   
-}
-
-           
 curation:
-  filter_empty_files: true
-  filter_zero_voltage: true
-  filter_short_distance: false
-  filter_no_current: true
+  filter_empty_files: false
+  filter_voltage: false
+  filter_distance: true
+  filter_current: false
 
 thresholds:
-  short_distance_m: 5
-  zero_voltage_v: 0.01
+  min_distance_m: 100
+  max_distance_m: 50000  #50KM
 
 
 # ================================
@@ -72,43 +62,69 @@ weather_data:
   api_url: "https://api.weather.com/v1/"
   api_key: "YOUR_API_KEY"
 
+
 # ================================
-# ML Training Parameters
+# Data Settings
 # ================================
+data:
+  label_col: "battery_status_current_a"
+
+  drop_cols:
+    - "timestamp"
+    - "sensor_gps_time_utc_usec"
+    - "date"
+    - "hour"
+    - "minute"
+    - "second"
+    - "battery_status_current_a"
+    - "battery_status_voltage_v"
+
+  categorical_cols:
+    - "mode"
+    - "flight_phase"
+    - "vehicle_type"
+
+  splits:
+    train_frac: 0.7
+    test_frac: 0.2
+    validate_frac: 0.1
+    seed: 42
 # ================================
 # ML Training Parameters
 # ================================
 model:
-
   model_name: "mlp"   # options: mlp, mlp_sliding, rnn, lstm
-  # Global training defaults
+
   training:
     batch_size: 32
     lr: 0.001
-    epochs: 20
-    device: "cuda"   # options: cuda, cpu
+    epochs: 10
+    device: "cuda"
+    
 
   architecture:
     mlp:
+      input_size: 18
       hidden_size: [128, 64, 32]
-      epochs: 20     
-      lr: 0.001
+      output_size: 1
+
     mlp_sliding:
       hidden_size: 64
       window_size: 10
-      epochs: 15
-      lr: 0.001
+
     rnn:
       hidden_size: 128
       num_layers: 2
-      epochs: 25
-      lr: 0.0005
+
     lstm:
       hidden_size: 128
       num_layers: 2
-      epochs: 30
-      lr: 0.0005
 
+
+evaluation:
+  mode: "flight"     # options: sample, flight
+     
+       
 # ================================
 # Visualization Settings
 # ================================

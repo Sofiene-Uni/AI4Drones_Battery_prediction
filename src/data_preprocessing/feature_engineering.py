@@ -52,12 +52,14 @@ def calculate_gps_distance(df):
     """
     Calculate 3D segment distance based on GPS coordinates and altitude, then fill the DataFrame columns.
     """
-    # Make a copy to avoid SettingWithCopyWarning
     df = df.copy()
     
     lat_col = 'vehicle_gps_position_lat'
     lon_col = 'vehicle_gps_position_lon'
-    alt_col = 'vehicle_gps_position_alt'  # make sure this exists
+    alt_col = 'vehicle_gps_position_alt'
+
+    # Fill missing GPS/altitude values with 0
+    df[[lat_col, lon_col, alt_col]] = df[[lat_col, lon_col, alt_col]].fillna(0)
 
     # Convert units
     latitudes = df[lat_col] / 1e7
@@ -65,7 +67,7 @@ def calculate_gps_distance(df):
     altitudes = df[alt_col] / 1e3  # mm -> meters
 
     # Initialize columns
-    df['segment_distance_gsp'] = 0.0
+    df['segment_distance_gps'] = 0.0
     df['total_distance_gps'] = 0.0
 
     # Iterate row by row
@@ -83,60 +85,83 @@ def calculate_gps_distance(df):
     return df
 
 
-def calculate_xyz_distance(df):
+
+
+def latlonalt_to_xyz(lat, lon, alt):
     """
-    Calculate 3D segment distance based on local x, y, z coordinates
-    and fill the DataFrame columns as 'segment_distance_xyz' and 'total_distance_xyz'.
+    Convert lat, lon (degrees) and altitude (m) to Earth-Centered, Earth-Fixed (ECEF) XYZ.
+    Uses WGS84 ellipsoid approximation.
+    """
+    # WGS84 ellipsoid constants
+    a = 6378137.0  # semi-major axis (m)
+    e2 = 6.69437999014e-3  # eccentricity squared
+
+    lat_rad = np.radians(lat)
+    lon_rad = np.radians(lon)
+
+    N = a / np.sqrt(1 - e2 * np.sin(lat_rad) ** 2)
+
+    X = (N + alt) * np.cos(lat_rad) * np.cos(lon_rad)
+    Y = (N + alt) * np.cos(lat_rad) * np.sin(lon_rad)
+    Z = (N * (1 - e2) + alt) * np.sin(lat_rad)
+
+    return X, Y, Z
+
+
+
+def calculate_xyz_speeds(df):
+    """
+    Add columns for x, y, z distances (m) and speeds (m/s)
+    based on GPS coordinates and time deltas.
+    Requires: delta_time_s column and GPS columns.
     """
     df = df.copy()
 
-    # Column names
-    x_col = 'vehicle_local_position_x'
-    y_col = 'vehicle_local_position_y'
-    z_col = 'vehicle_local_position_z'
+    lat = df['vehicle_gps_position_lat'] / 1e7
+    lon = df['vehicle_gps_position_lon'] / 1e7
+    alt = df['vehicle_gps_position_alt'] / 1e3  # mm -> meters
 
-    # Initialize columns
-    df['segment_distance_xyz'] = 0.0
-    df['total_distance_xyz'] = 0.0
+    # Convert to Cartesian coordinates (ECEF approx)
+    coords = np.array([latlonalt_to_xyz(la, lo, al) for la, lo, al in zip(lat, lon, alt)])
+    X, Y, Z = coords[:, 0], coords[:, 1], coords[:, 2]
 
-    # Iterate row by row
-    for i in range(1, len(df)):
-        dx = df.at[i, x_col] - df.at[i-1, x_col]
-        dy = df.at[i, y_col] - df.at[i-1, y_col]
-        dz = df.at[i, z_col] - df.at[i-1, z_col]
+    # Differences (per segment)
+    dX = np.diff(X, prepend=X[0])
+    dY = np.diff(Y, prepend=Y[0])
+    dZ = np.diff(Z, prepend=Z[0])
 
-        distance_xyz = np.sqrt(dx**2 + dy**2 + dz**2)
-        df.at[i, 'segment_distance_xyz'] = distance_xyz
-        df.at[i, 'total_distance_xyz'] = df.at[i-1, 'total_distance_xyz'] + distance_xyz
+    # Time deltas
+    dt = df['delta_time_s'].replace(0, np.nan)  # avoid div by zero
+
+    # Store distances
+    df['distance_x'] = dX
+    df['distance_y'] = dY
+    df['distance_z'] = dZ
+
+    # Speeds (m/s)
+    df['speed_x'] = dX / dt
+    df['speed_y'] = dY / dt
+    df['speed_z'] = dZ / dt
+
+    # Replace NaN/inf with 0
+    df[['distance_x','distance_y','distance_z','speed_x','speed_y','speed_z']] = (
+        df[['distance_x','distance_y','distance_z','speed_x','speed_y','speed_z']]
+        .replace([np.nan, np.inf, -np.inf], 0)
+    )
 
     return df
 
 
-def check_distance_discrepancy(df):
+def calculate_cumulative_current(df):
     """
-    Compare total distances from GPS vs local XYZ and return a nicely formatted report.
-    
-    Parameters:
-        df : DataFrame
-            Must contain 'total_distance_gps' and 'total_distance_xyz' columns.
-            
-    Returns:
-        dict : discrepancy report with floats and percentage string
+    Add a column that accumulates the 'current' over rows.
     """
-    total_gps = float(df['total_distance_gps'].iloc[-1])
-    total_xyz = float(df['total_distance_xyz'].iloc[-1])
-    
-    discrepancy = abs(total_gps - total_xyz)
-    percentage_diff = (discrepancy / total_gps * 100) if total_gps != 0 else float('nan')
-    
-    report = {
-        'total_distance_gps_m': round(total_gps, 2),
-        'total_distance_xyz_m': round(total_xyz, 2),
-        'discrepancy_m': round(discrepancy, 2),
-        'percentage_difference': f"{round(percentage_diff, 2)}%" if not np.isnan(percentage_diff) else "NaN"
-    }
-    
-    return report
+    current_col = 'battery_status_current_a'  # replace with the actual column name
+    if current_col not in df.columns:
+        raise ValueError(f"Column '{current_col}' not found in DataFrame")
+
+    df['cumulative_current'] = df[current_col].cumsum()
+    return df
 
 
 def create_features(df):
@@ -146,10 +171,6 @@ def create_features(df):
     # Temporal features
     df = calculate_temporal_features(df)
     df = calculate_gps_distance(df)
-    df = calculate_xyz_distance(df)
-    
-    # report = check_distance_discrepancy(df)
-    # print(report)
-    
+    df = calculate_xyz_speeds(df)
 
     return df

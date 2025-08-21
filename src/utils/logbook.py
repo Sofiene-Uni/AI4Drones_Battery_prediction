@@ -6,19 +6,27 @@ from datetime import datetime
 from src.utils.config import  load_config
 
 
-
-
-
 def create_logbook(logbook_path: Path) -> pd.DataFrame:
-    """Create a new empty logbook CSV."""
+    """Create a new empty logbook CSV with updated curation and validity columns."""
+    
     log_columns = [
-        "filename", "path", "size_bytes", "created_at", "id",
-        "processed", "curated", "use_train", "use_test", "use_validate"
+        "filename", 
+        "path",
+        "size_bytes", 
+        "created_at",
+        "id",
+        "processed",  # True if file was processed
+        "curated",    # True if file went through curation (even if invalid)
+        "valid",      # True if file passed all filters, False if invalid
+        "use_train",
+        "use_test",
+        "use_validate"
     ]
+    
     logbook = pd.DataFrame(columns=log_columns)
-    logbook_path.parent.mkdir(parents=True, exist_ok=True)
     logbook.to_csv(logbook_path, index=False)
-    print(f"🆕 Created new empty logbook at {logbook_path}.")
+    
+    print(f"📓 Created new logbook at {logbook_path} with columns: {log_columns}")
     return logbook
 
 

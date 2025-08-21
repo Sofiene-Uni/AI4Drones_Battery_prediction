@@ -63,24 +63,10 @@ def load_ulog(file_path: str):
         
 
 def extract_from_ulog(ulg_file_path, datasets_to_extract):
-    """
-    Extract selected datasets and fields from a ULog file.
-
-    Args:
-        ulg_file_path (str): Path to the .ulg file
-        datasets_to_extract (dict): Dictionary of datasets and fields to extract
-            e.g., {
-                "battery_status": ["timestamp", "current_a", "voltage_v"],
-                "vehicle_local_position": ["z"]
-            }
-
-    Returns:
-        dict: {dataset_name: {field_name: data_array}}
-    """
     extracted_data = {}
     
     try:
-        ulog = ULog("data\\raw\\log_0_2024-12-4-12-20-45.ulg")
+        ulog = ULog(ulg_file_path)  
         print(f"ULog file loaded successfully: {ulg_file_path}\n")
     
         for dataset_name, fields in datasets_to_extract.items():
@@ -100,6 +86,7 @@ def extract_from_ulog(ulg_file_path, datasets_to_extract):
         return None
 
     return extracted_data
+
 
 
 
