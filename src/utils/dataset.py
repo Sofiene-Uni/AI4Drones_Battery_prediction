@@ -3,6 +3,7 @@ from sklearn.preprocessing import StandardScaler
 import joblib
 import numpy as np 
 from src.utils.logbook import save_logbook
+from pathlib import Path
 
 
 def assign_splits(logbook: pd.DataFrame, train_frac=0.7, test_frac=0.2, validate_frac=0.1, seed: int = 42) -> pd.DataFrame:
@@ -51,6 +52,8 @@ def load_split(split_dir):
     features_dir = split_dir / "features"
     labels_dir = split_dir / "labels"
     
+
+    
     file_ids = sorted([f.stem for f in features_dir.glob("*.csv")])
     
     X_list, y_list = [], []
@@ -65,9 +68,13 @@ def load_split(split_dir):
     
     X_all = np.vstack(X_list)
     y_all = np.vstack(y_list)
+    
+    
+
 
     # repeat each file_id according to its row count
     expanded_ids = np.concatenate([[fid] * n for fid, n in zip(file_ids, lengths)])
+
     return X_all, y_all, expanded_ids
 
 
@@ -77,9 +84,9 @@ def fit_scaler(logbook, processed_dir, prepared_dir ,drop_cols , categorical_col
     Fit a scaler only on numeric features from TRAIN split files,
     excluding unwanted and categorical columns.
     """
-    prepared_dir.mkdir(parents=True, exist_ok=True)
 
     all_features = []
+
 
     # Only iterate over train files
     for row in logbook[(logbook["processed"]) & (logbook["use_train"])].itertuples():

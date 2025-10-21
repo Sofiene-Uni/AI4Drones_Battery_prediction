@@ -8,14 +8,11 @@ from src.utils.model_io import load_model_state
 
 
 
-def evaluate(model, device, split_dir: Path, batch_size=32, mode="sample"):
-    """Evaluate a trained model and log/visualize results."""
-    # --- load data ---
-    X, y, file_ids = load_split(split_dir)
 
-    # --- convert to torch ---
-    X = torch.tensor(X, dtype=torch.float32)
-    y = torch.tensor(y, dtype=torch.float32)
+def evaluate(model, device, X, y, file_ids=None, batch_size=32, mode="sample"):
+    """Evaluate a trained model and log/visualize results given dataset tensors."""
+
+    # --- create DataLoader ---
     dataset = torch.utils.data.TensorDataset(X, y)
     loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
@@ -34,29 +31,46 @@ def evaluate(model, device, split_dir: Path, batch_size=32, mode="sample"):
             all_targets.append(y_batch.cpu())
 
     avg_loss = total_loss / len(loader.dataset)
+    
+    
     all_preds = torch.vstack(all_preds).numpy()
     all_targets = torch.vstack(all_targets).numpy()
+    
+    
 
-    postprocess_evaluation(all_preds=all_preds, all_targets=all_targets,file_ids=file_ids,avg_loss=avg_loss, mode=mode )
-
+    postprocess_evaluation(
+        all_preds=all_preds,
+        all_targets=all_targets,
+        file_ids=file_ids,
+        avg_loss=avg_loss,
+        mode=mode
+    )
 
 
 def run():
     """Load the latest saved model and evaluate on the test split."""
 
     # --- load config ---
-
-    test_dir = Path(get_value("paths.prepared_dir"),"test")
+    test_dir = Path(get_value("paths.prepared_dir"), "test")
     batch_size = get_value("model.training.batch_size", default=32)
+    mode = get_value("evaluation.mode", default="flight")
+    
 
-    # --- build model ---
-    model, device = build_model_from_config()
+    # --- load test data ---
+    X_test, y_test, file_ids = load_split(test_dir)
+
+    
+    X_test = torch.tensor(X_test, dtype=torch.float32)
+    y_test = torch.tensor(y_test, dtype=torch.float32)
+    
+
+
+    # --- build model using test data to infer sizes ---
+    model, device = build_model_from_config(X_test, y_test)
 
     # --- load most recent checkpoint ---
     model = load_model_state(model, device=device)
     model.to(device)
 
     # --- evaluate ---
-    mode = get_value("evaluation.mode", default="sample")
-    evaluate(model, device, test_dir, batch_size=batch_size, mode=mode)
-
+    evaluate(model, device, X_test, y_test, file_ids=file_ids, batch_size=batch_size, mode=mode)

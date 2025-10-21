@@ -10,15 +10,20 @@ def log_training(epoch, avg_loss):
     log_path = reports_dir / f"{model_name}_training_log.csv"
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Clear the file at the beginning of training
+    if epoch == 1 and log_path.exists():
+        log_path.unlink()
+
     print(f"Epoch {epoch} - Avg Loss: {avg_loss:.6f}")
 
     df = pd.DataFrame([[epoch, avg_loss]], columns=["epoch", "loss"])
     if log_path.exists():
         df.to_csv(log_path, mode="a", header=False, index=False)
     else:
-        df.to_csv(log_path, index=False)
+        df.to_csv(log_path, index=False)   # write header on first write
 
     print(f"✅ Epoch {epoch} loss logged to {log_path}")
+
 
 
 def log_flight_report(flight_report):
@@ -52,8 +57,32 @@ def log_evaluation(preds, targets, avg_loss):
     print(f"✅ Predictions saved to {report_path}")
 
 
+
 def postprocess_evaluation(all_preds, all_targets, file_ids, avg_loss, mode):
-    if mode == "sample":
+    if mode == "simulation":
+        if file_ids is None:
+            raise ValueError("`file_ids` must be provided for simulation mode.")
+
+        # Base directory for reports
+        prepared_dir = Path(get_value("paths.prepared_dir", "data/prepared"))
+        output_dir = prepared_dir / "test" / "predictions"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save predictions grouped by flight ID
+        for flight_id in sorted(set(file_ids)):
+            indices = [i for i, f in enumerate(file_ids) if f == flight_id]
+            flight_pred = all_preds[indices]
+
+            df = pd.DataFrame({
+                "current_a": flight_pred.flatten()
+            })
+
+            df.to_csv(output_dir / f"{flight_id}.csv", index=False)
+
+        print(f"Simulation mode: saved {len(set(file_ids))} flights to '{output_dir}/'.")
+        
+
+    elif mode == "sample":
         log_evaluation(all_preds, all_targets, avg_loss)
 
     elif mode == "flight":
@@ -72,10 +101,7 @@ def postprocess_evaluation(all_preds, all_targets, file_ids, avg_loss, mode):
               )
         )
 
-        # Absolute error
         flight_report["abs_error"] = (flight_report["prediction"] - flight_report["target"]).abs()
-
-        # Fractional percentage error
         flight_report["pct_error"] = np.where(
             flight_report["target"] != 0,
             flight_report["abs_error"] / flight_report["target"],
@@ -85,7 +111,10 @@ def postprocess_evaluation(all_preds, all_targets, file_ids, avg_loss, mode):
         log_flight_report(flight_report)
 
     else:
-        raise ValueError("mode must be 'sample' or 'flight'")
+        print(mode)
+        raise ValueError("mode must be 'sample', 'flight', or 'simulation'")
+
+
 
 
 def log_correlation_report(df, label_column="label", report_name="correlation_report"):
@@ -100,7 +129,9 @@ def log_correlation_report(df, label_column="label", report_name="correlation_re
         return
 
     # Exclude time-related columns
-    exclude = ["hour", "minute", "second", "timestamp", "sensor_gps_time_utc_usec", "battery_status_current_a"]
+    exclude = ["hour", "minute", "second", "timestamp", "sensor_gps_time_utc_usec",
+               "battery_status_current_a","cumulative_current"]
+    
     numeric_df = numeric_df[[c for c in numeric_df.columns if not any(k in c.lower() for k in exclude)]]
 
     if label_column not in numeric_df.columns:
@@ -111,3 +142,11 @@ def log_correlation_report(df, label_column="label", report_name="correlation_re
     csv_path = reports_dir / f"{report_name}.csv"
     corr_series.to_csv(csv_path, header=True)
     print(f"✅ Correlation report saved to {csv_path}")
+    
+    
+    
+    
+
+
+
+

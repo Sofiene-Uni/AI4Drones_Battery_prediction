@@ -38,3 +38,4 @@ def get_value(path_or_list, default=None):
     else:
         raise TypeError("path_or_list must be a str or list/tuple of str")
         
+print(bool(get_value("data.reduction.sample", False)))

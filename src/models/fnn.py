@@ -24,7 +24,10 @@ class FNN(BaseModel):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x):
-        return self.model(x)
+        out = self.model(x)
+        if torch.isnan(out).any():
+            print("⚠️ NaN detected in forward pass!")
+        return out
 
     # Implement abstract methods minimally
     def train_model(self, X_train, y_train, X_val=None, y_val=None):

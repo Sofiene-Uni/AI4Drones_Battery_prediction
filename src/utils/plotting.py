@@ -2,6 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from pathlib import Path
 from src.utils.config import get_value
+from scipy.stats import norm
+import numpy as np
 
 
 def plot_report(df: pd.DataFrame, report_type: str, figsize=(10, 6)) -> plt.Figure:
@@ -17,17 +19,18 @@ def plot_report(df: pd.DataFrame, report_type: str, figsize=(10, 6)) -> plt.Figu
         ax.set_xlabel("Sample index")
         ax.set_ylabel("Value")
         ax.set_title("Prediction vs Target")
+        ax.set_ylim(0,)
         ax.legend()
     
     elif report_type == "training":
-        ax.plot(df["epoch"], df["loss"], marker='o', label="Training Loss")
+        ax.plot(df["epoch"], df["loss"], label="Training Loss")
         ax.set_xlabel("Epoch")
         ax.set_ylabel("Loss")
         ax.set_title("Training Loss over Epochs")
         ax.legend()
     
     elif report_type == "correlation":
-        label_column = get_value("plots.correlation_label", default="battery_status_current_a")
+        label_column = get_value("data.label_col", default="battery_status_current_a")
         df_sorted = df.sort_values(by=label_column)
         colors = df_sorted[label_column].apply(lambda x: "red" if x < 0 else "green")
         ax.barh(df_sorted.index, df_sorted[label_column], color=colors)
@@ -82,4 +85,30 @@ def visualize_report(report_type: str = "evaluation"):
     fig.savefig(fig_path, dpi=300)
     plt.show()
     plt.close(fig)
-    print(f"✅ Visualization saved to {fig_path}")
+    
+    
+def visualize_flight_summary(df, report_name="flight_summary"):
+    reports_dir = Path(get_value("paths.reports_dir"))
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    flight_ids = df["flight_id"]
+    currents = df["avg_current_per_meter"]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # --- Bar plot ---
+    ax.bar(flight_ids, currents, alpha=0.6, color="skyblue", label="Avg Current per Meter")
+    ax.set_xlabel("Flight Number")
+    ax.set_ylabel("Avg Current per Meter (A/m)")
+    ax.set_title("Average Current per Meter per Flight")
+    ax.grid(True, alpha=0.3)
+
+    ax.legend()
+    plt.tight_layout()
+
+    # --- Save and show figure ---
+    fig_path = reports_dir / f"{report_name}_plot.png"
+    fig.savefig(fig_path, dpi=300)
+    plt.show()
+    plt.close(fig)
+    print(f"✅ Flight summary figure saved to {fig_path}")

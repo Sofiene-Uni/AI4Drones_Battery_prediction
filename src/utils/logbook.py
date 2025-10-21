@@ -15,9 +15,9 @@ def create_logbook(logbook_path: Path) -> pd.DataFrame:
         "size_bytes", 
         "created_at",
         "id",
-        "processed",  # True if file was processed
-        "curated",    # True if file went through curation (even if invalid)
-        "valid",      # True if file passed all filters, False if invalid
+        "curated",    
+        "valid",     
+        "processed",  
         "use_train",
         "use_test",
         "use_validate"
@@ -32,6 +32,8 @@ def create_logbook(logbook_path: Path) -> pd.DataFrame:
 
 def load_logbook(logbook_path: Path) -> pd.DataFrame:
     """Load an existing logbook CSV."""
+    cfg = load_config()
+    logbook_path = Path(cfg["paths"]["logbook_path"])
     logbook = pd.read_csv(logbook_path)
     #print(f"✅ Loaded existing logbook ({len(logbook)} entries).")
     return logbook

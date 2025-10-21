@@ -9,7 +9,7 @@ from pathlib import Path
 from src.utils.config import get_value
 from src.utils.dataset import load_split
 from src.utils.reports import log_training
-from src.utils.model_io import save_model
+from src.utils.model_io import save_model,save_model_onnx
 from src.models.build_model import build_model_from_config
 
 
@@ -36,7 +36,8 @@ def run():
     )
         
     # Build model
-    model, device = build_model_from_config()
+    
+    model, device = build_model_from_config(X_train, y_train)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
     model.train()
@@ -47,12 +48,15 @@ def run():
         for X_batch, y_batch in loop:
             X_batch = X_batch.to(device)
             y_batch = y_batch.to(device)
+            
 
             optimizer.zero_grad()
             y_pred = model(X_batch)
             loss = criterion(y_pred, y_batch)
             loss.backward()
             optimizer.step()
+            
+       
 
             total_loss += loss.item() * X_batch.size(0)
             loop.set_postfix(batch_loss=loss.item())
@@ -65,3 +69,4 @@ def run():
         
     # Save model    
     save_model(model)
+    save_model_onnx(model, input_size=15)

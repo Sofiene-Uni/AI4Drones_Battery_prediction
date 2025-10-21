@@ -8,6 +8,7 @@ paths:
   curated_dir: "data/curated"
   processed_dir: "data/processed"
   prepared_dir: "data/prepared"
+  simulation_dir: "data/simulation"
 
 
   models_dir: "models"
@@ -19,11 +20,13 @@ paths:
 # ================================
 pipeline:
   run_data_collection: true
-  run_data_preprocessing: true
   run_data_curation: true
+  run_data_preprocessing: true
+  run_data_analysis: true
   run_data_prepare: true
   run_train: true
   run_evaluate: true
+  run_simulate: False
   run_visualize: true
 
 # ================================
@@ -37,18 +40,18 @@ download:
 # Data Curation
 # ================================
 datasets:
-  battery_status: ["timestamp", "current_a", "voltage_v"]
+  battery_status: ["timestamp", "current_a", "voltage_v","remaining"]
   vehicle_gps_position: ["timestamp", "lat", "lon", "alt"]
   #vehicle_local_position: ["timestamp", "x", "y", "z", "vx", "vy", "vz"]
-  vehicle_acceleration: ["timestamp", "xyz[0]", "xyz[1]", "xyz[2]"]
-  sensor_baro: ["timestamp", "pressure", "temperature"]
+  #vehicle_acceleration: ["timestamp", "xyz[0]", "xyz[1]", "xyz[2]"]
+  sensor_baro: ["timestamp", "temperature"]    #  "pressure"
   sensor_gps: ["timestamp", "time_utc_usec"]
 
 curation:
   filter_empty_files: false
-  filter_voltage: false
   filter_distance: true
   filter_current: false
+  filter_voltage: false
 
 thresholds:
   min_distance_m: 100
@@ -67,7 +70,8 @@ weather_data:
 # Data Settings
 # ================================
 data:
-  label_col: "battery_status_current_a"
+
+  label_col: "battery_status_current_a" 
 
   drop_cols:
     - "timestamp"
@@ -78,6 +82,9 @@ data:
     - "second"
     - "battery_status_current_a"
     - "battery_status_voltage_v"
+    - "battery_status_remaining"
+    - "charge_As"  
+
 
   categorical_cols:
     - "mode"
@@ -89,6 +96,13 @@ data:
     test_frac: 0.2
     validate_frac: 0.1
     seed: 42
+    
+    
+  reduction:
+    sample: True
+    n_samples: 20
+    
+    
 # ================================
 # ML Training Parameters
 # ================================
@@ -97,14 +111,14 @@ model:
 
   training:
     batch_size: 32
-    lr: 0.001
+    lr: 0.003
     epochs: 10
     device: "cuda"
     
 
   architecture:
     mlp:
-      input_size: 18
+      input_size: 25
       hidden_size: [128, 64, 32]
       output_size: 1
 
@@ -121,8 +135,11 @@ model:
       num_layers: 2
 
 
+# ================================
+# Evaluation Settings
+# ================================
 evaluation:
-  mode: "flight"     # options: sample, flight
+  mode: "flight"     # options: sample, flight, simulation
      
        
 # ================================
