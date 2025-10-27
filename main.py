@@ -15,12 +15,12 @@ if __name__ == "__main__":
         ("run_data_collection", data_collect.run),
         ("run_data_curation", data_curate.run),
         ("run_data_preprocessing", data_preprocess.run),
-        # ("run_data_analysis",data_analyse.run),
-        # ("run_data_prepare", data_prepare.run),
-        # ("run_train", train.run),
-        # ("run_evaluate", evaluate.run),
-        # ("run_simulate",battery_simulation.run),
-        # ("run_visualize", visualize.run)
+        ("run_data_analysis",data_analyse.run),
+        ("run_data_prepare", data_prepare.run),
+        ("run_train", train.run),
+        ("run_evaluate", evaluate.run),
+        ("run_simulate",battery_simulation.run),
+        ("run_visualize", visualize.run)
       
        ]
 
